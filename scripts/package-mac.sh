@@ -11,9 +11,15 @@ OUT_DIR="${OUT_DIR:-$ROOT/dist/mac}"
 APP="$BUILD_DIR/MultiPlayer.app"
 ZIP="$OUT_DIR/MultiPlayer-${VERSION}-macOS.zip"
 
-QT_PREFIX="${CMAKE_PREFIX_PATH:-$(brew --prefix qt 2>/dev/null || brew --prefix qt@6 2>/dev/null || true)}"
+QT_PREFIX="${CMAKE_PREFIX_PATH:-${QT_ROOT_DIR:-}}"
+if [[ -z "$QT_PREFIX" || ! -d "$QT_PREFIX" ]]; then
+  QT_PREFIX="$(brew --prefix qt 2>/dev/null || brew --prefix qt@6 2>/dev/null || true)"
+fi
+if [[ "$QT_PREFIX" == */lib/cmake/Qt6 ]]; then
+  QT_PREFIX="$(cd "$QT_PREFIX/../../.." && pwd)"
+fi
 if [[ -z "${QT_PREFIX}" || ! -d "${QT_PREFIX}" ]]; then
-  echo "Qt prefix not found. Set CMAKE_PREFIX_PATH." >&2
+  echo "Qt prefix not found. Set CMAKE_PREFIX_PATH or QT_ROOT_DIR." >&2
   exit 1
 fi
 

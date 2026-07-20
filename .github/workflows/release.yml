@@ -44,15 +44,17 @@ jobs:
       - name: Package
         run: |
           chmod +x scripts/package-mac.sh
-          # install-qt-action sets Qt6_DIR / PATH; prefer that over Homebrew qt
-          if [[ -n "${Qt6_DIR:-}" ]]; then
-            QT_ROOT="$Qt6_DIR"
-            if [[ "$QT_ROOT" == */lib/cmake/Qt6 ]]; then
-              QT_ROOT="$(cd "$QT_ROOT/../../.." && pwd)"
-            fi
-            export CMAKE_PREFIX_PATH="$QT_ROOT"
-            export MACDEPLOYQT="$QT_ROOT/bin/macdeployqt"
+          QT_ROOT="${QT_ROOT_DIR:-${Qt6_DIR:-}}"
+          if [[ "$QT_ROOT" == */lib/cmake/Qt6 ]]; then
+            QT_ROOT="$(cd "$QT_ROOT/../../.." && pwd)"
           fi
+          if [[ -z "$QT_ROOT" || ! -d "$QT_ROOT" ]]; then
+            echo "Qt root missing (QT_ROOT_DIR/Qt6_DIR)" >&2
+            exit 1
+          fi
+          export CMAKE_PREFIX_PATH="$QT_ROOT"
+          export MACDEPLOYQT="$QT_ROOT/bin/macdeployqt"
+          echo "Using Qt at $QT_ROOT"
           ./scripts/package-mac.sh
 
       - name: Upload mac artifact
