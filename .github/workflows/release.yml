@@ -28,14 +28,31 @@ jobs:
         with:
           ref: mac
 
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: mac
+          target: desktop
+          arch: clang_64
+          cache: true
+
       - name: Install deps (Homebrew)
         run: |
-          brew install cmake qt ffmpeg rtmidi ninja
-          echo "CMAKE_PREFIX_PATH=$(brew --prefix qt)" >> "$GITHUB_ENV"
+          brew install cmake ffmpeg rtmidi ninja
 
       - name: Package
         run: |
           chmod +x scripts/package-mac.sh
+          # install-qt-action sets Qt6_DIR / PATH; prefer that over Homebrew qt
+          if [[ -n "${Qt6_DIR:-}" ]]; then
+            QT_ROOT="$Qt6_DIR"
+            if [[ "$QT_ROOT" == */lib/cmake/Qt6 ]]; then
+              QT_ROOT="$(cd "$QT_ROOT/../../.." && pwd)"
+            fi
+            export CMAKE_PREFIX_PATH="$QT_ROOT"
+            export MACDEPLOYQT="$QT_ROOT/bin/macdeployqt"
+          fi
           ./scripts/package-mac.sh
 
       - name: Upload mac artifact
