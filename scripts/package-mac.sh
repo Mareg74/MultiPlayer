@@ -39,7 +39,18 @@ if [[ ! -d "$APP" ]]; then
 fi
 
 echo "==> macdeployqt"
+set +e
 "$MACDEPLOYQT" "$APP" -always-overwrite
+MACDEPLOY_STATUS=$?
+set -e
+if [[ $MACDEPLOY_STATUS -ne 0 ]]; then
+  echo "WARNING: macdeployqt exited $MACDEPLOY_STATUS (continuing; Homebrew Qt is often noisy)" >&2
+fi
+
+# Ad-hoc sign so Gatekeeper is less angry on local/CI unsigned builds
+if command -v codesign >/dev/null 2>&1; then
+  codesign --force --deep --sign - "$APP" 2>/dev/null || true
+fi
 
 FRAMEWORKS="$APP/Contents/Frameworks"
 MACOS_DIR="$APP/Contents/MacOS"
