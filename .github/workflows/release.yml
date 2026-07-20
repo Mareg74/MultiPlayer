@@ -67,8 +67,11 @@ jobs:
           modules: ""
           cache: true
 
+      - name: Install Ninja + MSVC env
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install Ninja
-        run: choco install ninja -y
+        run: choco install ninja -y --no-progress
 
       - name: Fetch FFmpeg + RtMidi
         run: |
@@ -110,9 +113,13 @@ jobs:
 
       - name: Package
         run: |
+          $qt = $env:Qt6_DIR
+          if ($qt -match '[/\\]lib[/\\]cmake[/\\]Qt6$') {
+            $qt = Split-Path (Split-Path (Split-Path $qt -Parent) -Parent) -Parent
+          }
+          $env:CMAKE_PREFIX_PATH = $qt
+          $env:BUILD_DIR = Join-Path $pwd 'build-release'
           ./scripts/package-win.ps1
-        env:
-          CMAKE_PREFIX_PATH: ${{ env.Qt6_DIR }}
 
       - name: Upload windows artifact
         uses: actions/upload-artifact@v4
