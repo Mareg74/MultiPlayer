@@ -26,11 +26,15 @@ credentials.json
 # Project files (user sessions)
 *.mpproj
 
-# Compiled binaries (keep Spout headers tracked)
+# Compiled binaries — except vendored runtimes for release packs
 *.dll
 *.lib
 *.exe
 *.pdb
 *.ilk
 *.obj
+!third_party/NDI/runtime/
+!third_party/NDI/runtime/**
+!third_party/Spout/bin/
+!third_party/Spout/bin/**
 deps/

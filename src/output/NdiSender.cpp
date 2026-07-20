@@ -6,6 +6,10 @@
 #include <Processing.NDI.Lib.h>
 #include <Processing.NDI.DynamicLoad.h>
 
+#include <QCoreApplication>
+#include <QDir>
+#include <QStringList>
+
 #include <cstdio>
 #include <cstdlib>
 
@@ -27,6 +31,27 @@ HMODULE g_ndiModule = nullptr;
 void *g_ndiModule = nullptr;
 #endif
 
+QStringList ndiSearchPaths()
+{
+    QStringList paths;
+    const QString appDir = QCoreApplication::applicationDirPath();
+#if defined(_WIN32)
+    if (!appDir.isEmpty())
+        paths << QDir(appDir).filePath(QString::fromUtf8(NDILIB_LIBRARY_NAME));
+    paths << QString::fromUtf8(NDILIB_LIBRARY_NAME);
+#else
+    if (!appDir.isEmpty()) {
+        paths << QDir(appDir).filePath(QString::fromUtf8(NDILIB_LIBRARY_NAME));
+        paths << QDir(appDir).absoluteFilePath(QStringLiteral("../Frameworks/%1").arg(
+            QString::fromUtf8(NDILIB_LIBRARY_NAME)));
+    }
+    paths << QString::fromUtf8(NDILIB_LIBRARY_NAME);
+    paths << QStringLiteral("/usr/local/lib/libndi.dylib");
+    paths << QStringLiteral("/Library/NDI SDK for Apple/lib/macOS/libndi.dylib");
+#endif
+    return paths;
+}
+
 bool loadNdiLibrary()
 {
     if (g_ndi)
@@ -39,8 +64,13 @@ bool loadNdiLibrary()
         snprintf(path, sizeof(path), "%s\\%s", runtimeDir, NDILIB_LIBRARY_NAME);
         g_ndiModule = LoadLibraryA(path);
     }
-    if (!g_ndiModule)
-        g_ndiModule = LoadLibraryA(NDILIB_LIBRARY_NAME);
+    if (!g_ndiModule) {
+        for (const QString &p : ndiSearchPaths()) {
+            g_ndiModule = LoadLibraryW(reinterpret_cast<LPCWSTR>(p.utf16()));
+            if (g_ndiModule)
+                break;
+        }
+    }
     if (!g_ndiModule)
         return false;
 
@@ -58,10 +88,13 @@ bool loadNdiLibrary()
         snprintf(path, sizeof(path), "%s/%s", runtimeDir, NDILIB_LIBRARY_NAME);
         g_ndiModule = dlopen(path, RTLD_LOCAL | RTLD_LAZY);
     }
-    if (!g_ndiModule)
-        g_ndiModule = dlopen(NDILIB_LIBRARY_NAME, RTLD_LOCAL | RTLD_LAZY);
-    if (!g_ndiModule)
-        g_ndiModule = dlopen("/usr/local/lib/libndi.dylib", RTLD_LOCAL | RTLD_LAZY);
+    if (!g_ndiModule) {
+        for (const QString &p : ndiSearchPaths()) {
+            g_ndiModule = dlopen(qPrintable(p), RTLD_LOCAL | RTLD_LAZY);
+            if (g_ndiModule)
+                break;
+        }
+    }
     if (!g_ndiModule)
         return false;
 
