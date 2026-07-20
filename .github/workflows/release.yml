@@ -1,0 +1,170 @@
+# Release builds for MultiPlayer (semantic version tags: v0.1.0, …)
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without v prefix (e.g. 0.1.0)"
+        required: true
+        default: "0.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    name: Build macOS
+    runs-on: macos-14
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout mac branch
+        uses: actions/checkout@v4
+        with:
+          ref: mac
+
+      - name: Install deps (Homebrew)
+        run: |
+          brew install cmake qt ffmpeg rtmidi ninja
+          echo "CMAKE_PREFIX_PATH=$(brew --prefix qt)" >> "$GITHUB_ENV"
+
+      - name: Package
+        run: |
+          chmod +x scripts/package-mac.sh
+          ./scripts/package-mac.sh
+
+      - name: Upload mac artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MultiPlayer-macOS
+          path: dist/mac/*.zip
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout windows branch
+        uses: actions/checkout@v4
+        with:
+          ref: windows
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: ""
+          cache: true
+
+      - name: Install Ninja
+        run: choco install ninja -y
+
+      - name: Fetch FFmpeg + RtMidi
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/win-fetch-deps.ps1
+
+      - name: Fetch SpoutLibrary.dll
+        run: |
+          $url = "https://github.com/leadedge/Spout2/releases/download/2.007.017/Spout-SDK-binaries_2-007-017_1.zip"
+          $zip = "$env:RUNNER_TEMP\spout.zip"
+          Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
+          Expand-Archive -Path $zip -DestinationPath "$env:RUNNER_TEMP\spout" -Force
+          $dll = Get-ChildItem -Path "$env:RUNNER_TEMP\spout" -Recurse -Filter SpoutLibrary.dll |
+            Where-Object { $_.FullName -match '\\MD\\bin\\' -or $_.FullName -match '/MD/bin/' } |
+            Select-Object -First 1
+          if (-not $dll) {
+            $dll = Get-ChildItem -Path "$env:RUNNER_TEMP\spout" -Recurse -Filter SpoutLibrary.dll | Select-Object -First 1
+          }
+          if (-not $dll) { throw "SpoutLibrary.dll not found in Spout SDK zip" }
+          New-Item -ItemType Directory -Force -Path "third_party/Spout/bin" | Out-Null
+          Copy-Item $dll.FullName "third_party/Spout/bin/SpoutLibrary.dll" -Force
+          Write-Host "Spout OK: $($dll.FullName)"
+
+      - name: Ensure NDI runtime DLL
+        run: |
+          $dest = "third_party/NDI/runtime/Processing.NDI.Lib.x64.dll"
+          if (Test-Path $dest) {
+            Write-Host "NDI runtime already vendored"
+            exit 0
+          }
+          if ($env:NDI_DLL_URL) {
+            New-Item -ItemType Directory -Force -Path "third_party/NDI/runtime" | Out-Null
+            Invoke-WebRequest -Uri $env:NDI_DLL_URL -OutFile $dest -UseBasicParsing
+            Write-Host "NDI downloaded from secret URL"
+            exit 0
+          }
+          Write-Host "WARNING: no vendored NDI DLL — pack may lack NDI"
+        env:
+          NDI_DLL_URL: ${{ secrets.NDI_DLL_URL }}
+
+      - name: Package
+        run: |
+          ./scripts/package-win.ps1
+        env:
+          CMAKE_PREFIX_PATH: ${{ env.Qt6_DIR }}
+
+      - name: Upload windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MultiPlayer-Windows
+          path: dist/windows/*.zip
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: [build-mac, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create / update release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="v${{ github.event.inputs.version }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          NOTES="$(cat <<EOF
+          ## MultiPlayer ${TAG}
+
+          Packs multi-plateforme (sans notarisation Apple).
+
+          ### macOS
+          - \`MultiPlayer-*-macOS.zip\` — \`.app\` + Qt (\`macdeployqt\`) + \`libndi.dylib\` si vendored
+
+          ### Windows
+          - \`MultiPlayer-*-Windows.zip\` — \`.exe\` + Qt (\`windeployqt\`) + FFmpeg + Spout + NDI (si présent)
+
+          ### Notes
+          - Sur macOS non notarié : clic droit → Ouvrir la première fois (Gatekeeper).
+          - Branches sources : \`mac\` / \`windows\`.
+          EOF
+          )"
+          mkdir -p upload
+          find artifacts -type f -name '*.zip' -exec cp {} upload/ \;
+          ls -lh upload/
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$TAG" upload/*.zip --repo "${{ github.repository }}" --clobber
+          else
+            gh release create "$TAG" upload/*.zip \
+              --repo "${{ github.repository }}" \
+              --title "MultiPlayer ${TAG}" \
+              --notes "$NOTES"
+          fi

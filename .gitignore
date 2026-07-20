@@ -29,3 +29,7 @@ credentials.json
 
 # Local dependency trees
 deps/
+
+# Allow vendored NDI runtime for release packs
+!third_party/NDI/runtime/
+!third_party/NDI/runtime/**
