@@ -26,17 +26,11 @@ credentials.json
 # Project files (user sessions)
 *.mpproj
 
-# Binaries / compiled libs (keep third_party headers)
-*.dylib
+# Compiled binaries (keep Spout headers tracked)
 *.dll
 *.lib
-*.a
-*.so
-*.so.*
 *.exe
 *.pdb
 *.ilk
 *.obj
-
-# Local dependency trees (install SDKs outside the repo)
 deps/
