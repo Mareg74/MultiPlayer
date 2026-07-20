@@ -267,7 +267,7 @@ void MainWindow::buildUi()
     top->addWidget(title);
 
     auto *openSettingsBtn = new QPushButton(QStringLiteral("Paramètres"), topHost);
-    openSettingsBtn->setToolTip(QStringLiteral("Composition, sorties NDI/Spout, OSC, MIDI"));
+    openSettingsBtn->setToolTip(QStringLiteral("Composition, sorties NDI, OSC, MIDI"));
     top->addWidget(openSettingsBtn);
     top->addStretch(1);
 
@@ -459,7 +459,7 @@ void MainWindow::buildUi()
     m_guideVisible->setChecked(true);
     m_guideVisible->setStyleSheet(toggleBtnStyle);
     m_guideVisible->setToolTip(QStringLiteral(
-        "Affiche le guide sur le Program (pas envoyé en NDI/Spout)"));
+        "Affiche le guide sur le Program (pas envoyé en NDI)"));
     m_guideForeground = new QPushButton(QStringLiteral("1er plan"), m_guideBox);
     m_guideForeground->setCheckable(true);
     m_guideForeground->setChecked(false);
@@ -513,7 +513,7 @@ void MainWindow::buildUi()
     m_alphaMaskVisible->setChecked(true);
     m_alphaMaskVisible->setStyleSheet(toggleBtnStyle);
     m_alphaMaskVisible->setToolTip(
-        QStringLiteral("Affiche le PNG devant tous les clips (Program + NDI/Spout).\n"
+        QStringLiteral("Affiche le PNG devant tous les clips (Program + NDI).\n"
                        "Les zones transparentes laissent voir la composition."));
     m_alphaMaskInvert = new QPushButton(QStringLiteral("Inverser"), m_alphaMaskBox);
     m_alphaMaskInvert->setCheckable(true);

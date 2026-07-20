@@ -264,7 +264,7 @@ void SettingsDialog::buildCompositionTab(QWidget *tab)
 void SettingsDialog::buildOutputsTab(QWidget *tab)
 {
     auto *layout = new QVBoxLayout(tab);
-    auto *box = new QGroupBox(QStringLiteral("Sorties Program (NDI / Spout)"), tab);
+    auto *box = new QGroupBox(QStringLiteral("Sorties Program (NDI)"), tab);
     auto *form = new QFormLayout(box);
 
     m_ndiEnable = makeToggleButton(QStringLiteral("Activer NDI"), box);
@@ -277,16 +277,18 @@ void SettingsDialog::buildOutputsTab(QWidget *tab)
     m_ndiBandwidth->addItem(QStringLiteral("Débit max"), static_cast<int>(NdiBandwidth::Highest));
     m_ndiBandwidth->addItem(QStringLiteral("Débit bas"), static_cast<int>(NdiBandwidth::Lowest));
 
-    m_spoutEnable = makeToggleButton(QStringLiteral("Activer Spout"), box);
-    m_spoutNameEdit = new QLineEdit(box);
-    m_spoutNameEdit->setPlaceholderText(QStringLiteral("Nom source Spout"));
-
     form->addRow(m_ndiEnable);
     form->addRow(QStringLiteral("Nom NDI"), m_ndiNameEdit);
     form->addRow(m_ndiAlpha);
     form->addRow(QStringLiteral("Débit NDI"), m_ndiBandwidth);
+
+#if defined(Q_OS_WIN)
+    m_spoutEnable = makeToggleButton(QStringLiteral("Activer Spout"), box);
+    m_spoutNameEdit = new QLineEdit(box);
+    m_spoutNameEdit->setPlaceholderText(QStringLiteral("Nom source Spout"));
     form->addRow(m_spoutEnable);
     form->addRow(QStringLiteral("Nom Spout"), m_spoutNameEdit);
+#endif
 
     auto *hint = new QLabel(
         QStringLiteral("Ces sorties s’appliquent lorsque OUTPUT est ON AIR."), box);
@@ -298,12 +300,14 @@ void SettingsDialog::buildOutputsTab(QWidget *tab)
     layout->addStretch();
 
     connect(m_ndiEnable, &QPushButton::toggled, this, &SettingsDialog::onOutputsEdited);
-    connect(m_spoutEnable, &QPushButton::toggled, this, &SettingsDialog::onOutputsEdited);
     connect(m_ndiAlpha, &QPushButton::toggled, this, &SettingsDialog::onOutputsEdited);
     connect(m_ndiBandwidth, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &SettingsDialog::onOutputsEdited);
     connect(m_ndiNameEdit, &QLineEdit::editingFinished, this, &SettingsDialog::onOutputsEdited);
+#if defined(Q_OS_WIN)
+    connect(m_spoutEnable, &QPushButton::toggled, this, &SettingsDialog::onOutputsEdited);
     connect(m_spoutNameEdit, &QLineEdit::editingFinished, this, &SettingsDialog::onOutputsEdited);
+#endif
 }
 
 void SettingsDialog::syncOutputsUi()
@@ -311,17 +315,23 @@ void SettingsDialog::syncOutputsUi()
     if (!m_output)
         return;
     const QSignalBlocker b1(m_ndiEnable);
-    const QSignalBlocker b2(m_spoutEnable);
     const QSignalBlocker b3(m_ndiAlpha);
     const QSignalBlocker b4(m_ndiBandwidth);
     const QSignalBlocker b5(m_ndiNameEdit);
-    const QSignalBlocker b6(m_spoutNameEdit);
     m_ndiEnable->setChecked(m_output->ndiEnabled());
-    m_spoutEnable->setChecked(m_output->spoutEnabled());
     m_ndiAlpha->setChecked(m_output->ndiSendAlpha());
     m_ndiBandwidth->setCurrentIndex(m_output->ndiBandwidth() == NdiBandwidth::Lowest ? 1 : 0);
     m_ndiNameEdit->setText(m_output->ndiName());
-    m_spoutNameEdit->setText(m_output->spoutName());
+#if defined(Q_OS_WIN)
+    if (m_spoutEnable) {
+        const QSignalBlocker b2(m_spoutEnable);
+        m_spoutEnable->setChecked(m_output->spoutEnabled());
+    }
+    if (m_spoutNameEdit) {
+        const QSignalBlocker b6(m_spoutNameEdit);
+        m_spoutNameEdit->setText(m_output->spoutName());
+    }
+#endif
 }
 
 void SettingsDialog::onOutputsEdited()
@@ -329,15 +339,22 @@ void SettingsDialog::onOutputsEdited()
     if (!m_output)
         return;
     m_output->setNdiEnabled(m_ndiEnable->isChecked());
-    m_output->setSpoutEnabled(m_spoutEnable->isChecked());
     m_output->setNdiName(m_ndiNameEdit->text().trimmed().isEmpty()
                              ? QStringLiteral("MultiPlayer")
                              : m_ndiNameEdit->text().trimmed());
-    m_output->setSpoutName(m_spoutNameEdit->text().trimmed().isEmpty()
-                               ? QStringLiteral("MultiPlayer")
-                               : m_spoutNameEdit->text().trimmed());
     m_output->setNdiSendAlpha(m_ndiAlpha->isChecked());
     m_output->setNdiBandwidth(static_cast<NdiBandwidth>(m_ndiBandwidth->currentData().toInt()));
+#if defined(Q_OS_WIN)
+    if (m_spoutEnable)
+        m_output->setSpoutEnabled(m_spoutEnable->isChecked());
+    if (m_spoutNameEdit) {
+        m_output->setSpoutName(m_spoutNameEdit->text().trimmed().isEmpty()
+                                   ? QStringLiteral("MultiPlayer")
+                                   : m_spoutNameEdit->text().trimmed());
+    }
+#else
+    m_output->setSpoutEnabled(false);
+#endif
     emit outputsChanged();
 }
 

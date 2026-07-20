@@ -7,14 +7,17 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# Identity: com.mareg74.multiplayer
+# Identity: com.mareg74.multiplayer (macOS branch)
 set(MP_APP_NAME "MultiPlayer")
 set(MP_APP_ID "com.mareg74.multiplayer")
 set(MP_MODULE_DEFAULT 2)
 set(MP_MODULE_MAX 14)
 
 option(MP_ENABLE_NDI "Build with NDI sender support" ON)
-option(MP_ENABLE_SPOUT "Build with Spout sender (Windows only)" ON)
+
+if(NOT APPLE)
+    message(FATAL_ERROR "This CMakeLists belongs to the mac branch. Use the windows branch on Windows.")
+endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network)
 
@@ -31,31 +34,20 @@ if(NOT FFMPEG_FOUND)
         set(FFMPEG_ROOT "$ENV{FFMPEG_ROOT}")
     endif()
     find_path(FFMPEG_INCLUDE_DIRS libavcodec/avcodec.h
-        PATHS
-            ${FFMPEG_ROOT}/include
-            C:/deps/ffmpeg/include
-            /opt/homebrew/include
-            /usr/local/include
-            /usr/include)
-    find_library(AVFORMAT_LIB avformat
-        PATHS ${FFMPEG_ROOT}/lib C:/deps/ffmpeg/lib /opt/homebrew/lib /usr/local/lib)
-    find_library(AVCODEC_LIB avcodec
-        PATHS ${FFMPEG_ROOT}/lib C:/deps/ffmpeg/lib /opt/homebrew/lib /usr/local/lib)
-    find_library(AVUTIL_LIB avutil
-        PATHS ${FFMPEG_ROOT}/lib C:/deps/ffmpeg/lib /opt/homebrew/lib /usr/local/lib)
-    find_library(SWSCALE_LIB swscale
-        PATHS ${FFMPEG_ROOT}/lib C:/deps/ffmpeg/lib /opt/homebrew/lib /usr/local/lib)
-    find_library(SWRESAMPLE_LIB swresample
-        PATHS ${FFMPEG_ROOT}/lib C:/deps/ffmpeg/lib /opt/homebrew/lib /usr/local/lib)
+        PATHS ${FFMPEG_ROOT}/include /opt/homebrew/include /usr/local/include /usr/include)
+    find_library(AVFORMAT_LIB avformat PATHS ${FFMPEG_ROOT}/lib /opt/homebrew/lib /usr/local/lib)
+    find_library(AVCODEC_LIB avcodec PATHS ${FFMPEG_ROOT}/lib /opt/homebrew/lib /usr/local/lib)
+    find_library(AVUTIL_LIB avutil PATHS ${FFMPEG_ROOT}/lib /opt/homebrew/lib /usr/local/lib)
+    find_library(SWSCALE_LIB swscale PATHS ${FFMPEG_ROOT}/lib /opt/homebrew/lib /usr/local/lib)
+    find_library(SWRESAMPLE_LIB swresample PATHS ${FFMPEG_ROOT}/lib /opt/homebrew/lib /usr/local/lib)
     if(FFMPEG_INCLUDE_DIRS AND AVFORMAT_LIB AND AVCODEC_LIB AND AVUTIL_LIB AND SWSCALE_LIB)
         set(FFMPEG_FOUND TRUE)
         set(FFMPEG_LIBRARIES ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWSCALE_LIB} ${SWRESAMPLE_LIB})
         message(STATUS "FFmpeg found via find_library: ${FFMPEG_INCLUDE_DIRS}")
     else()
-        message(FATAL_ERROR "FFmpeg not found. Install ffmpeg or set FFMPEG_ROOT / PKG_CONFIG_PATH.")
+        message(FATAL_ERROR "FFmpeg not found. Install ffmpeg (brew) or set FFMPEG_ROOT / PKG_CONFIG_PATH.")
     endif()
 endif()
-
 
 set(MP_SOURCES
     src/main.cpp
@@ -98,6 +90,7 @@ target_compile_definitions(MultiPlayer PRIVATE
     MP_MODULE_DEFAULT=${MP_MODULE_DEFAULT}
     MP_MODULE_MAX=${MP_MODULE_MAX}
     MP_VERSION_STRING="${PROJECT_VERSION}"
+    MP_HAS_SPOUT=0
 )
 
 target_link_libraries(MultiPlayer PRIVATE
@@ -112,8 +105,7 @@ else()
     target_link_libraries(MultiPlayer PRIVATE ${FFMPEG_LIBRARIES})
 endif()
 
-
-# NDI: headers from third_party or NDI_SDK_DIR; runtime loaded dynamically (no link .lib required)
+# NDI: headers from third_party or NDI_SDK_DIR; runtime loaded dynamically
 if(MP_ENABLE_NDI)
     if(DEFINED ENV{NDI_SDK_DIR})
         set(NDI_SDK_DIR "$ENV{NDI_SDK_DIR}")
@@ -123,18 +115,10 @@ if(MP_ENABLE_NDI)
         set(_ndi_include "${CMAKE_CURRENT_SOURCE_DIR}/third_party/NDI/include")
     endif()
     if(NOT _ndi_include AND NOT NDI_SDK_DIR)
-        if(WIN32)
-            set(_ndi_guesses
-                "C:/Program Files/NDI/NDI 6 SDK"
-                "C:/Program Files/NDI/NDI 5 SDK"
-                "C:/Program Files/NDI/NDI SDK")
-        elseif(APPLE)
-            set(_ndi_guesses
+        foreach(_g
                 "$ENV{HOME}/NDI SDK for Apple"
                 "/Library/NDI SDK for Apple"
                 "$ENV{HOME}/Library/NDI SDK for Apple")
-        endif()
-        foreach(_g ${_ndi_guesses})
             if(EXISTS "${_g}")
                 set(NDI_SDK_DIR "${_g}")
                 break()
@@ -151,9 +135,7 @@ if(MP_ENABLE_NDI)
     if(_ndi_include)
         target_include_directories(MultiPlayer PRIVATE "${_ndi_include}")
         target_compile_definitions(MultiPlayer PRIVATE MP_HAS_NDI=1)
-        if(NOT WIN32)
-            target_link_libraries(MultiPlayer PRIVATE ${CMAKE_DL_LIBS})
-        endif()
+        target_link_libraries(MultiPlayer PRIVATE ${CMAKE_DL_LIBS})
         message(STATUS "NDI enabled (dynamic load): ${_ndi_include}")
     else()
         target_compile_definitions(MultiPlayer PRIVATE MP_HAS_NDI=0)
@@ -163,53 +145,13 @@ else()
     target_compile_definitions(MultiPlayer PRIVATE MP_HAS_NDI=0)
 endif()
 
-# Spout (Windows only): headers/DLL from third_party/Spout or SPOUT_SDK_DIR
-if(WIN32 AND MP_ENABLE_SPOUT)
-    if(DEFINED ENV{SPOUT_SDK_DIR})
-        set(SPOUT_SDK_DIR "$ENV{SPOUT_SDK_DIR}")
-    endif()
-    set(_spout_include "")
-    set(_spout_lib "")
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/Spout/include/SpoutLibrary.h")
-        set(_spout_include "${CMAKE_CURRENT_SOURCE_DIR}/third_party/Spout/include")
-        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/Spout/lib/SpoutLibrary.lib")
-            set(_spout_lib "${CMAKE_CURRENT_SOURCE_DIR}/third_party/Spout/lib/SpoutLibrary.lib")
-        endif()
-    elseif(SPOUT_SDK_DIR AND EXISTS "${SPOUT_SDK_DIR}/include/SpoutLibrary.h")
-        set(_spout_include "${SPOUT_SDK_DIR}/include")
-        if(EXISTS "${SPOUT_SDK_DIR}/lib/SpoutLibrary.lib")
-            set(_spout_lib "${SPOUT_SDK_DIR}/lib/SpoutLibrary.lib")
-        endif()
-    endif()
-    if(_spout_include)
-        target_include_directories(MultiPlayer PRIVATE "${_spout_include}")
-        # Runtime LoadLibrary("SpoutLibrary.dll"); optional .lib not required.
-        target_compile_definitions(MultiPlayer PRIVATE MP_HAS_SPOUT=1)
-        message(STATUS "Spout enabled (dynamic load): ${_spout_include}")
-    else()
-        target_compile_definitions(MultiPlayer PRIVATE MP_HAS_SPOUT=0)
-        message(STATUS "Spout SDK not found — building stub sender (set SPOUT_SDK_DIR)")
-    endif()
-else()
-    target_compile_definitions(MultiPlayer PRIVATE MP_HAS_SPOUT=0)
-    if(NOT WIN32)
-        message(STATUS "Spout skipped (Windows only)")
-    endif()
-endif()
-
-# RtMidi: prefer installed lib, else compile from RTMIDI_SOURCE_DIR / C:/deps/rtmidi
+# RtMidi (Homebrew)
 if(DEFINED ENV{RTMIDI_SOURCE_DIR})
     set(RTMIDI_SOURCE_DIR "$ENV{RTMIDI_SOURCE_DIR}")
 endif()
 find_path(RTMIDI_INCLUDE_DIR RtMidi.h
-    PATHS
-        ${RTMIDI_SOURCE_DIR}
-        C:/deps/rtmidi
-        /opt/homebrew/include/rtmidi
-        /usr/local/include/rtmidi
-        /usr/include/rtmidi)
-find_library(RTMIDI_LIBRARY rtmidi
-    PATHS /opt/homebrew/lib /usr/local/lib C:/deps/rtmidi/build)
+    PATHS ${RTMIDI_SOURCE_DIR} /opt/homebrew/include/rtmidi /usr/local/include/rtmidi /usr/include/rtmidi)
+find_library(RTMIDI_LIBRARY rtmidi PATHS /opt/homebrew/lib /usr/local/lib)
 if(RTMIDI_LIBRARY AND RTMIDI_INCLUDE_DIR)
     target_include_directories(MultiPlayer PRIVATE ${RTMIDI_INCLUDE_DIR})
     target_link_libraries(MultiPlayer PRIVATE ${RTMIDI_LIBRARY})
@@ -218,45 +160,26 @@ if(RTMIDI_LIBRARY AND RTMIDI_INCLUDE_DIR)
 elseif(RTMIDI_INCLUDE_DIR AND EXISTS "${RTMIDI_INCLUDE_DIR}/RtMidi.cpp")
     target_sources(MultiPlayer PRIVATE "${RTMIDI_INCLUDE_DIR}/RtMidi.cpp")
     target_include_directories(MultiPlayer PRIVATE ${RTMIDI_INCLUDE_DIR})
-    target_compile_definitions(MultiPlayer PRIVATE MP_HAS_RTMIDI=1)
-    if(WIN32)
-        target_compile_definitions(MultiPlayer PRIVATE __WINDOWS_MM__)
-        target_link_libraries(MultiPlayer PRIVATE winmm)
-    elseif(APPLE)
-        target_compile_definitions(MultiPlayer PRIVATE __MACOSX_CORE__)
-    endif()
+    target_compile_definitions(MultiPlayer PRIVATE MP_HAS_RTMIDI=1 __MACOSX_CORE__)
     message(STATUS "RtMidi enabled (source): ${RTMIDI_INCLUDE_DIR}")
 else()
-    message(FATAL_ERROR "RtMidi not found. Install rtmidi or set RTMIDI_SOURCE_DIR.")
+    message(FATAL_ERROR "RtMidi not found. brew install rtmidi")
 endif()
 
-if(APPLE)
-    find_library(COREMIDI_LIBRARY CoreMIDI)
-    find_library(COREAUDIO_LIBRARY CoreAudio)
-    find_library(COREFOUNDATION_LIBRARY CoreFoundation)
-    if(COREMIDI_LIBRARY)
-        target_link_libraries(MultiPlayer PRIVATE
-            ${COREMIDI_LIBRARY} ${COREAUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY})
-    endif()
+find_library(COREMIDI_LIBRARY CoreMIDI)
+find_library(COREAUDIO_LIBRARY CoreAudio)
+find_library(COREFOUNDATION_LIBRARY CoreFoundation)
+if(COREMIDI_LIBRARY)
+    target_link_libraries(MultiPlayer PRIVATE
+        ${COREMIDI_LIBRARY} ${COREAUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY})
 endif()
 
-if(WIN32)
-    target_link_libraries(MultiPlayer PRIVATE psapi)
-    set_target_properties(MultiPlayer PROPERTIES
-        WIN32_EXECUTABLE TRUE
-        OUTPUT_NAME MultiPlayer
-    )
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/app.rc")
-        target_sources(MultiPlayer PRIVATE resources/windows/app.rc)
-    endif()
-elseif(APPLE)
-    set_target_properties(MultiPlayer PROPERTIES
-        MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_GUI_IDENTIFIER "${MP_APP_ID}"
-        MACOSX_BUNDLE_BUNDLE_NAME "${MP_APP_NAME}"
-        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
-    )
-endif()
+set_target_properties(MultiPlayer PROPERTIES
+    MACOSX_BUNDLE TRUE
+    MACOSX_BUNDLE_GUI_IDENTIFIER "${MP_APP_ID}"
+    MACOSX_BUNDLE_BUNDLE_NAME "${MP_APP_NAME}"
+    MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+)
 
-install(TARGETS MultiPlayer RUNTIME DESTINATION bin BUNDLE DESTINATION .)
+install(TARGETS MultiPlayer BUNDLE DESTINATION .)
