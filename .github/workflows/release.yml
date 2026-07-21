@@ -132,11 +132,15 @@ jobs:
 
       - name: Package
         run: |
-          $qt = $env:Qt6_DIR
+          $qt = $env:QT_ROOT_DIR
+          if (-not $qt) { $qt = $env:Qt6_DIR }
           if ($qt -match '[/\\]lib[/\\]cmake[/\\]Qt6$') {
             $qt = Split-Path (Split-Path (Split-Path $qt -Parent) -Parent) -Parent
           }
+          if (-not $qt -or -not (Test-Path $qt)) { throw "Qt root not found (QT_ROOT_DIR=$($env:QT_ROOT_DIR) Qt6_DIR=$($env:Qt6_DIR))" }
+          Write-Host "Using Qt at $qt"
           $env:CMAKE_PREFIX_PATH = $qt
+          $env:QT_ROOT_DIR = $qt
           $env:BUILD_DIR = Join-Path $pwd 'build-release'
           ./scripts/package-win.ps1
 
