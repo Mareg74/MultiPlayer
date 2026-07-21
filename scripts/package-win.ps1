@@ -55,10 +55,12 @@ Get-ChildItem (Join-Path $FfmpegRoot 'bin\*.dll') -ErrorAction SilentlyContinue 
 # NDI
 $ndiCandidates = @(
     (Join-Path $Root 'third_party\NDI\runtime\Processing.NDI.Lib.x64.dll'),
-    (Join-Path $env:NDI_RUNTIME_DIR_V6 'Processing.NDI.Lib.x64.dll'),
     'C:\Program Files\NDI\NDI 6 Runtime\v6\Processing.NDI.Lib.x64.dll',
     'C:\Program Files (x86)\NDI\NDI 6 Runtime\v6\Processing.NDI.Lib.x64.dll'
 )
+if ($env:NDI_RUNTIME_DIR_V6) {
+    $ndiCandidates += (Join-Path $env:NDI_RUNTIME_DIR_V6 'Processing.NDI.Lib.x64.dll')
+}
 $ndiOk = $false
 foreach ($c in $ndiCandidates) {
     if ($c -and (Test-Path $c)) {
