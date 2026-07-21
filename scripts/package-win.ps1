@@ -17,8 +17,17 @@ $OutDir = Join-Path $Root 'dist\windows'
 $Zip = Join-Path $OutDir "MultiPlayer-$Version-Windows.zip"
 
 $QtDir = $env:CMAKE_PREFIX_PATH
+if (-not $QtDir) { $QtDir = $env:QT_ROOT_DIR }
 if (-not $QtDir) { $QtDir = $env:Qt6_DIR }
+if ($QtDir -and ($QtDir -match '[/\\]lib[/\\]cmake[/\\]Qt6$')) {
+    $QtDir = Split-Path (Split-Path (Split-Path $QtDir -Parent) -Parent) -Parent
+}
 if (-not $QtDir) { $QtDir = 'C:\Qt\6.8.3\msvc2022_64' }
+$WinDeployProbe = Join-Path $QtDir 'bin\windeployqt.exe'
+if (-not (Test-Path $WinDeployProbe)) {
+    $found = Get-ChildItem -Path $QtDir -Recurse -Filter windeployqt.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($found) { $QtDir = Split-Path (Split-Path $found.FullName -Parent) -Parent }
+}
 $FfmpegRoot = if ($env:FFMPEG_ROOT) { $env:FFMPEG_ROOT } else { 'C:\deps\ffmpeg' }
 $RtMidi = if ($env:RTMIDI_SOURCE_DIR) { $env:RTMIDI_SOURCE_DIR } else { 'C:\deps\rtmidi' }
 
