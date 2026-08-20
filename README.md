@@ -2,10 +2,14 @@
 
 VJ multi-player — Qt 6 / C++17 / FFmpeg — composition Program, sorties **NDI** / **Spout**, contrôle **OSC** / **MIDI**.
 
-**Branche :** [`windows`](https://github.com/Mareg74/MultiPlayer/tree/windows)  
+| Branche | Plateforme | Rôle |
+|---------|------------|------|
+| [`mac`](https://github.com/Mareg74/MultiPlayer/tree/mac) | macOS | défaut |
+| [`windows`](https://github.com/Mareg74/MultiPlayer/tree/windows) | Windows | **cette branche** |
+
 **App ID :** `com.mareg74.multiplayer` · **Version :** `0.1.0`
 
-> Développement macOS → branche [`mac`](https://github.com/Mareg74/MultiPlayer/tree/mac) (code et deps séparés).
+Checkout `windows` sur PC, `mac` sur Mac — pas de merge systématique entre les deux.
 
 ---
 

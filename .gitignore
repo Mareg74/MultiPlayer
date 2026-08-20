@@ -1,5 +1,6 @@
 # Build
 build/
+build-release/
 cmake-build-*/
 out/
 dist/
@@ -7,6 +8,23 @@ CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 compile_commands.json
+*.app
+
+# Local / generated binaries (headers under third_party/ stay tracked)
+*.dylib
+*.dll
+*.lib
+*.a
+*.exe
+*.pdb
+*.ilk
+*.obj
+
+# Allow vendored runtimes for release packs
+!third_party/NDI/runtime/
+!third_party/NDI/runtime/**
+!third_party/Spout/bin/
+!third_party/Spout/bin/**
 
 # IDE / OS
 .idea/
@@ -14,6 +32,7 @@ compile_commands.json
 *.user
 *.autosave
 .DS_Store
+*.dSYM/
 Thumbs.db
 *~
 
@@ -26,15 +45,6 @@ credentials.json
 # Project files (user sessions)
 *.mpproj
 
-# Compiled binaries — except vendored runtimes for release packs
-*.dll
-*.lib
-*.exe
-*.pdb
-*.ilk
-*.obj
-!third_party/NDI/runtime/
-!third_party/NDI/runtime/**
-!third_party/Spout/bin/
-!third_party/Spout/bin/**
+# Local dependency trees (incl. Windows C:\deps style checkouts)
 deps/
+C:/deps/
