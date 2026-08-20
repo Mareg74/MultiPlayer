@@ -8,6 +8,21 @@ CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 compile_commands.json
+*.app
+
+# Local / generated binaries (headers under third_party/ stay tracked)
+*.dylib
+*.dll
+*.lib
+*.a
+*.exe
+*.pdb
+*.ilk
+*.obj
+
+# Allow vendored NDI runtime for release packs
+!third_party/NDI/runtime/
+!third_party/NDI/runtime/**
 
 # IDE / OS
 .idea/
@@ -28,9 +43,6 @@ credentials.json
 # Project files (user sessions)
 *.mpproj
 
-# Local dependency trees
+# Local dependency trees (incl. Windows C:\deps style checkouts)
 deps/
-
-# Allow vendored NDI runtime for release packs
-!third_party/NDI/runtime/
-!third_party/NDI/runtime/**
+C:/deps/

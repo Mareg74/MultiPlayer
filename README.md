@@ -1,17 +1,21 @@
-# MultiPlayer (macOS)
+# MultiPlayer
 
-VJ multi-player — Qt 6 / C++17 / FFmpeg — composition Program, sortie **NDI**, contrôle **OSC** / **MIDI**.
+VJ multi-player — Qt 6 / C++17 / FFmpeg — composition Program, sortie **NDI**, contrôle **OSC** / **MIDI**. Sur Windows : aussi **Spout**.
 
-**Branche :** [`mac`](https://github.com/Mareg74/MultiPlayer/tree/mac) (défaut)  
+| Branche | Plateforme | Rôle |
+|---------|------------|------|
+| [`mac`](https://github.com/Mareg74/MultiPlayer/tree/mac) | macOS | **défaut** |
+| [`windows`](https://github.com/Mareg74/MultiPlayer/tree/windows) | Windows | deps / scripts séparés |
+
 **App ID :** `com.mareg74.multiplayer` · **Version :** `0.1.0`
 
-> Développement Windows → branche [`windows`](https://github.com/Mareg74/MultiPlayer/tree/windows) (code et deps séparés).
+Checkout `mac` sur Mac, `windows` sur PC — pas de merge systématique entre les deux.
 
 ---
 
 ## Français
 
-### Prérequis
+### Prérequis (macOS)
 
 - **CMake** ≥ 3.21  
 - **Qt 6** (Widgets, Network) — Homebrew  
@@ -19,7 +23,7 @@ VJ multi-player — Qt 6 / C++17 / FFmpeg — composition Program, sortie **NDI*
 - **RtMidi** — Homebrew  
 - **NDI SDK for Apple** (optionnel) — headers aussi sous `third_party/NDI/include`
 
-### Build
+### Build (macOS)
 
 ```bash
 brew install cmake qt ffmpeg rtmidi
@@ -33,6 +37,18 @@ cmake --build build -j
 open build/MultiPlayer.app
 ```
 
+### Build (Windows)
+
+Sur la branche [`windows`](https://github.com/Mareg74/MultiPlayer/tree/windows) :
+
+```powershell
+git checkout windows
+powershell -ExecutionPolicy Bypass -File scripts\win-fetch-deps.ps1
+scripts\win-build.bat
+```
+
+Voir le README de cette branche pour Qt MSVC, Spout et `C:\deps\`.
+
 ### Utilisation rapide
 
 1. Charger des clips via **Banque** ou **Load**.  
@@ -42,17 +58,17 @@ open build/MultiPlayer.app
 
 ### Licence
 
-**Tous droits réservés.** Aucune licence open source n’est publiée pour l’instant.
+**Tous droits réservés / All rights reserved.** Aucune licence open source n’est publiée pour l’instant.
 
 ---
 
 ## English
 
-### Prerequisites
+### Prerequisites (macOS)
 
 CMake ≥ 3.21, Qt 6, FFmpeg, RtMidi (Homebrew). Optional NDI SDK for Apple.
 
-### Build
+### Build (macOS)
 
 ```bash
 brew install cmake qt ffmpeg rtmidi
@@ -62,6 +78,14 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --pre
 cmake --build build -j
 open build/MultiPlayer.app
 ```
+
+### Build (Windows)
+
+On the [`windows`](https://github.com/Mareg74/MultiPlayer/tree/windows) branch: `scripts\win-fetch-deps.ps1` then `scripts\win-build.bat`.
+
+### Quick start
+
+Load clips → compose on Program → OUTPUT on-air for NDI. OSC: [docs/OSC.md](docs/OSC.md) (UDP 7000).
 
 ### License
 
